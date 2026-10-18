@@ -1,0 +1,17 @@
+{
+  "name": "Il Giro",
+  "short_name": "Il Giro",
+  "description": "Itinerari a piedi da 8.000 a 30.000 passi in Lower Manhattan, con meteo e cosa indossare.",
+  "version": "1.0.0",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F3EE",
+  "theme_color": "#E8562A",
+  "lang": "it",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

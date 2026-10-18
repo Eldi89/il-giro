@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Il Giro</title>
+<meta name="description" content="Il Giro: itinerari a piedi da 8.000 a 30.000 passi in Lower Manhattan, con meteo e cosa indossare.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Il Giro">
+<meta name="theme-color" content="#F6F3EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F141B" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#F6F3EE; --card:#FFFFFF; --ink:#16202E; --muted:#6B7280; --line:#E7E1D8;
+  --accent:#E8562A; --accent-ink:#FFFFFF; --accent-soft:#FCE9E1;
+  --blue:#1D6FE8; --ok:#119A68; --warn:#B7791F;
+  --shadow:0 1px 2px rgba(22,32,46,.05),0 6px 18px rgba(22,32,46,.06);
+  --r:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0F141B; --card:#18202A; --ink:#EEF1F5; --muted:#93A0AE; --line:#273241;
+    --accent-soft:#3A2219; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25); }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+a{color:inherit}
+.top{flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(env(safe-area-inset-top) + 8px) 16px 10px;background:var(--bg)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{margin:0;font-size:20px;letter-spacing:-.02em;line-height:1.1}
+.brand .ver{font-size:12px;color:var(--muted)}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--accent);display:grid;place-items:center}
+.icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);box-shadow:var(--shadow)}
+.icon-btn svg{width:20px;height:20px}
+#mapWrap{position:relative;flex:none;height:42vh;min-height:250px;transition:height .25s}
+body.walking #mapWrap{height:50vh}
+#map{position:absolute;inset:0;background:#e9e5df}
+.fabs{position:absolute;right:12px;bottom:14px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.fab{width:42px;height:42px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center}
+.fab svg{width:20px;height:20px}
+.pin-hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;background:var(--ink);color:var(--bg);
+  padding:9px 14px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:var(--shadow);white-space:nowrap}
+.sheet{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px calc(env(safe-area-inset-bottom) + 28px);
+  border-radius:22px 22px 0 0;margin-top:-18px;position:relative;z-index:550;background:var(--bg)}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.card{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+.strong{font-weight:650;font-size:17px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.badge{font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.seg button,.chip{min-height:44px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:14px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;text-align:center;line-height:1.15}
+.seg button svg{width:16px;height:16px;flex:none}
+.seg button.on,.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.chips.scroll{display:flex;overflow-x:auto;gap:8px;margin:0 -14px;padding:0 14px 2px;scrollbar-width:none}
+.chips.scroll::-webkit-scrollbar{display:none}
+.chips.scroll .chip{flex:none;padding:6px 14px}
+.chip small{display:block;font-weight:500;font-size:11px;opacity:.7}
+.btn{width:100%;min-height:52px;border-radius:14px;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn svg{width:19px;height:19px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.dark{background:var(--ink);color:var(--bg)}
+.btn.ghost{background:var(--card);border:1px solid var(--line)}
+.btn:disabled{opacity:.5}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.stat{background:var(--bg);border-radius:14px;padding:10px 12px}
+.stat .k{font-size:12px;color:var(--muted);font-weight:600}
+.stat .v{font-size:20px;font-weight:750;letter-spacing:-.02em;margin-top:2px}
+.stat .s{font-size:12px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);line-height:1.4;margin:8px 0 0}
+.wx-head{display:flex;align-items:center;gap:12px}
+.wx-icon{font-size:40px;line-height:1}
+.wx-temp{font-size:30px;font-weight:750;letter-spacing:-.03em}
+.wx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.wx-grid div{background:var(--bg);border-radius:12px;padding:8px}
+.wx-grid b{display:block;font-size:15px}
+.wx-grid span{font-size:11px;color:var(--muted);font-weight:600}
+ul.wear{list-style:none;margin:0;padding:0}
+ul.wear li{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:15px;line-height:1.35}
+ul.wear li:first-child{border-top:0}
+ul.wear .ic{flex:none;width:24px;text-align:center}
+ol.stops{list-style:none;margin:0;padding:0;counter-reset:s}
+ol.stops li{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+ol.stops li:first-child{border-top:0}
+.num{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center}
+.num.done{background:var(--ok)}
+.stop-name{font-weight:650}
+.stop-desc{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.35}
+.links{display:flex;gap:12px;margin-top:6px;font-size:13px;font-weight:600}
+.links a{color:var(--blue);text-decoration:none}
+.foot{font-size:11px;color:var(--muted);text-align:center;line-height:1.5;margin-top:18px}
+.progress{height:10px;border-radius:6px;background:var(--bg);overflow:hidden;margin:10px 0 4px}
+.progress i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .4s}
+.big{font-size:46px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.gps{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--accent)}
+.banner{background:var(--ok);color:#fff;border-radius:14px;padding:12px 14px;font-weight:650;margin-bottom:12px}
+.modal{position:fixed;inset:0;z-index:2000;background:rgba(10,14,20,.55);display:flex;align-items:flex-end}
+.modal[hidden]{display:none}
+.modal .panel{background:var(--bg);width:100%;max-height:92dvh;overflow-y:auto;border-radius:22px 22px 0 0;
+  padding:16px 16px calc(env(safe-area-inset-bottom) + 20px)}
+.modal h2{margin:4px 0 12px;font-size:20px;letter-spacing:-.02em}
+.preview{width:100%;border-radius:16px;box-shadow:var(--shadow);display:block;background:var(--card);aspect-ratio:4/5}
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field label{font-size:15px}
+.field small{display:block;color:var(--muted);font-size:12px}
+.field input{width:110px;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  font:inherit;font-size:16px;padding:6px 10px;text-align:right}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.hist li:first-child{border-top:0}
+.hist button{color:var(--blue);font-weight:600}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%) translateY(20px);opacity:0;
+  background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:14px;font-size:14px;font-weight:600;z-index:3000;
+  transition:all .25s;max-width:88vw;text-align:center;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* map markers */
+.start-pin{display:grid;place-items:center}
+.start-pin div{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;
+  font-weight:800;font-size:13px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.stop-ic div{width:24px;height:24px;border-radius:50%;background:#E8562A;color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center;
+  border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.stop-ic.done div{background:#119A68}
+.leaflet-control-attribution{font-size:9px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 17.5a6.5 6.5 0 1 1 3.2 2.3"/><circle cx="6" cy="17.5" r="1.6" fill="#fff" stroke="none"/></svg>
+    </div>
+    <div><h1>Il Giro</h1><span class="ver" id="verLabel">v1.0.0 · Lower Manhattan</span></div>
+  </div>
+  <button class="icon-btn" id="btnSettings" aria-label="Impostazioni e storico">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+  </button>
+</header>
+
+<div id="mapWrap">
+  <div id="map"></div>
+  <div class="pin-hint" id="pinHint" hidden>Tocca la mappa per fissare la partenza</div>
+  <div class="fabs">
+    <button class="fab" id="fabFit" aria-label="Mostra tutto il percorso">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+    <button class="fab" id="fabMe" aria-label="Centra sulla mia posizione">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ====== PLANNER ====== -->
+<main class="sheet" id="planner">
+  <div class="grab"></div>
+
+  <div class="card">
+    <div class="row between">
+      <div><p class="label">Partenza</p><div class="strong" id="startLabel">228 W 4th St</div></div>
+      <span class="badge" id="startBadge">Casa</span>
+    </div>
+    <div class="seg" id="startSeg">
+      <button id="btnHome" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg>228 W 4th</button>
+      <button id="btnPin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Sulla mappa</button>
+      <button id="btnGps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></svg>Posizione live</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="label">Obiettivo passi</p>
+    <div class="chips" id="targetChips"></div>
+  </div>
+
+  <div class="card">
+    <p class="label">Tipo di giro</p>
+    <div class="chips scroll" id="themeChips"></div>
+    <p class="label" style="margin-top:14px">Quando parti</p>
+    <div class="chips scroll" id="depChips"></div>
+  </div>
+
+  <button class="btn primary" id="btnPlan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17a8 8 0 1 1 4 3"/><path d="M4 21v-4h4"/></svg>
+    Crea itinerario
+  </button>
+  <div style="height:12px"></div>
+
+  <div class="card" id="planCard" hidden>
+    <div class="row between">
+      <div><p class="label" style="margin:0">Il tuo giro</p><div class="strong" id="planTitle"></div></div>
+      <span class="badge" id="planSrc"></span>
+    </div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><div class="k">Passi stimati</div><div class="v" id="pSteps">–</div><div class="s" id="pTarget"></div></div>
+      <div class="stat"><div class="k">Distanza</div><div class="v" id="pDist">–</div><div class="s" id="pMiles"></div></div>
+      <div class="stat"><div class="k">Tempo stimato</div><div class="v" id="pTime">–</div><div class="s" id="pPace"></div></div>
+      <div class="stat"><div class="k">Rientro</div><div class="v" id="pBack">–</div><div class="s" id="pDep"></div></div>
+    </div>
+    <p class="note" id="planNote"></p>
+    <div class="btn-row">
+      <button class="btn ghost" id="btnAgain">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Un altro giro
+      </button>
+      <a class="btn ghost" id="btnGmaps" target="_blank" rel="noopener" style="text-decoration:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Google Maps
+      </a>
+    </div>
+    <div style="height:8px"></div>
+    <button class="btn primary" id="btnStart">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg>Inizia il giro
+    </button>
+  </div>
+
+  <div class="card" id="wxCard">
+    <p class="label">Meteo durante il giro</p>
+    <div id="wxBody"><p class="note">Carico il meteo…</p></div>
+  </div>
+
+  <div class="card" id="wearCard" hidden>
+    <p class="label">Cosa indossare</p>
+    <ul class="wear" id="wearList"></ul>
+  </div>
+
+  <div class="card" id="stopsCard" hidden>
+    <p class="label">Tappe del giro</p>
+    <ol class="stops" id="stopsList"></ol>
+  </div>
+
+  <div class="foot">
+    Il Giro <span class="appver">v1.0.0</span><br>
+    Mappe © OpenStreetMap, © CARTO · Percorsi OSRM / Valhalla (FOSSGIS) · Meteo Open-Meteo<br>
+    Passi stimati da distanza e lunghezza del passo
+  </div>
+</main>
+
+<!-- ====== WALK MODE ====== -->
+<section class="sheet" id="walk" hidden>
+  <div class="grab"></div>
+  <div class="banner" id="backBanner" hidden>Sei tornato al punto di partenza. Ottimo giro! Tocca “Termina” quando vuoi.</div>
+  <div class="card">
+    <div class="row between">
+      <p class="label" style="margin:0" id="wTitle">Giro in corso</p>
+      <div class="gps"><span class="dot" id="gpsDot"></span><span id="gpsText">GPS…</span></div>
+    </div>
+    <div style="margin-top:10px" class="row between">
+      <div><div class="big" id="wSteps">0</div><div class="note" style="margin:4px 0 0">passi stimati</div></div>
+      <div style="text-align:right"><div class="strong" id="wPct">0%</div><div class="note" style="margin:2px 0 0" id="wGoal"></div></div>
+    </div>
+    <div class="progress"><i id="wBar"></i></div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><div class="k">Tempo</div><div class="v" id="wTime">0:00</div></div>
+      <div class="stat"><div class="k">Distanza</div><div class="v" id="wDist">0,00 km</div></div>
+      <div class="stat"><div class="k">Mancano</div><div class="v" id="wLeft">–</div></div>
+      <div class="stat"><div class="k">Ritmo</div><div class="v" id="wPace">–</div></div>
+    </div>
+  </div>
+  <div class="card" id="nextCard">
+    <p class="label">Prossima tappa</p>
+    <div class="strong" id="nextName">–</div>
+    <div class="links" id="nextLinks"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn ghost" id="btnPause">Pausa</button>
+    <button class="btn dark" id="btnFinish">Termina</button>
+  </div>
+  <p class="note" style="text-align:center">Tieni l’app aperta durante il giro: con lo schermo bloccato iPhone sospende il GPS delle web app. Lo schermo resta acceso in automatico.</p>
+</section>
+
+<!-- ====== SUMMARY ====== -->
+<div class="modal" id="summary" hidden>
+  <div class="panel">
+    <div class="grab"></div>
+    <h2 id="sumTitle">Giro completato</h2>
+    <img class="preview" id="sumImg" alt="Riepilogo del giro con percorso e tempo">
+    <div class="card" style="margin-top:12px">
+      <div class="field">
+        <label for="realSteps">Passi reali<small>Facoltativo, da app Salute</small></label>
+        <input id="realSteps" type="number" inputmode="numeric" placeholder="es. 10342">
+      </div>
+    </div>
+    <button class="btn primary" id="btnShare">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Condividi
+    </button>
+    <div class="btn-row">
+      <a class="btn ghost" id="btnSave" download="il-giro.png" style="text-decoration:none">Salva immagine</a>
+      <button class="btn ghost" id="btnClose">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SETTINGS ====== -->
+<div class="modal" id="settings" hidden>
+  <div class="panel">
+    <div class="grab"></div>
+    <h2>Impostazioni</h2>
+    <div class="card">
+      <div class="field">
+        <label for="setStride">Lunghezza del passo<small>cm, circa altezza × 0,415</small></label>
+        <input id="setStride" type="number" inputmode="numeric" min="50" max="110">
+      </div>
+      <div class="field">
+        <label for="setCad">Ritmo<small>passi al minuto (100 = passo normale)</small></label>
+        <input id="setCad" type="number" inputmode="numeric" min="70" max="140">
+      </div>
+    </div>
+    <p class="label">Storico giri</p>
+    <div class="card"><ul class="hist" id="histList"></ul></div>
+    <div class="btn-row">
+      <button class="btn ghost" id="btnClearHist">Svuota storico</button>
+      <button class="btn dark" id="btnSetClose">Fatto</button>
+    </div>
+    <div class="foot">Il Giro <span class="appver">v1.0.0</span> · dati salvati solo su questo iPhone</div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// CORE-START
+const APP_VERSION = '1.0.0';
+const HOME = { lat: 40.73445, lng: -74.00275, label: '228 W 4th St' };
+const TARGETS = [8000, 10000, 15000, 20000, 25000, 30000];
+const THEMES = [
+  { id: 'mix', name: 'Misto' },
+  { id: 'w', name: 'Lungofiume' },
+  { id: 'h', name: 'Storia & FiDi' },
+  { id: 'v', name: 'Village & SoHo' },
+  { id: 'b', name: 'Ponti & Brooklyn' },
+  { id: 'f', name: 'Cibo & mercati' }
+];
+// t = tags (w lungofiume, h storia, v quartieri, b ponti/Brooklyn, f cibo); e = estesa (solo giri lunghi)
+const POIS = [
+  { n: 'Christopher Street Pier', lat: 40.7329, lng: -74.0105, t: 'wv', d: 'Il molo del Village sull’Hudson: prato, panchine e tramonti.' },
+  { n: 'Little Island', lat: 40.7420, lng: -74.0103, t: 'wv', d: 'Il parco sospeso sui “tulipani” di cemento del Pier 55.' },
+  { n: 'Whitney Museum e inizio High Line', lat: 40.7397, lng: -74.0085, t: 'wvh', d: 'Meatpacking District: museo, Gansevoort Peninsula e scale della High Line.' },
+  { n: 'Chelsea Market', lat: 40.7424, lng: -74.0061, t: 'f', d: 'Ex fabbrica Nabisco, oggi mercato coperto: tacos, lobster roll, caffè.' },
+  { n: 'Pier 26 (Tribeca)', lat: 40.7215, lng: -74.0143, t: 'w', d: 'Il molo con l’“ecological” tide deck e vista sull’Hudson.' },
+  { n: 'Rockefeller Park', lat: 40.7172, lng: -74.0163, t: 'w', d: 'Prati sul fiume in Battery Park City, tranquilli anche nel weekend.' },
+  { n: 'Brookfield Place e Winter Garden', lat: 40.7128, lng: -74.0157, t: 'wh', d: 'Atrio con le palme e marina degli yacht sul North Cove.' },
+  { n: 'Wagner Park', lat: 40.7047, lng: -74.0185, t: 'w', d: 'La terrazza con la vista più pulita sulla Statua della Libertà.' },
+  { n: 'The Battery e Castle Clinton', lat: 40.7035, lng: -74.0168, t: 'wh', d: 'Il forte del 1811 e i giardini sulla punta di Manhattan.' },
+  { n: 'Bowling Green e Charging Bull', lat: 40.7056, lng: -74.0134, t: 'h', d: 'Il parco pubblico più antico della città e il toro di Wall Street.' },
+  { n: 'Stone Street', lat: 40.7042, lng: -74.0104, t: 'hf', d: 'Vicolo acciottolato del ’600, oggi pieno di tavoli all’aperto.' },
+  { n: 'Trinity Church e Wall Street', lat: 40.7076, lng: -74.0117, t: 'h', d: 'Chiesa gotica, NYSE e Federal Hall a due passi l’uno dall’altro.' },
+  { n: '9/11 Memorial e Oculus', lat: 40.7114, lng: -74.0124, t: 'h', d: 'Le due vasche del memoriale e l’Oculus di Calatrava.' },
+  { n: 'City Hall Park', lat: 40.7128, lng: -74.0065, t: 'hb', d: 'Il municipio e l’ingresso pedonale del Brooklyn Bridge.' },
+  { n: 'Pier 11 e Wall St Ferry', lat: 40.7031, lng: -74.0057, t: 'w', d: 'Lungo l’East River tra i traghetti, con il ponte all’orizzonte.' },
+  { n: 'South Street Seaport e Pier 17', lat: 40.7058, lng: -74.0019, t: 'whf', d: 'Velieri storici, acciottolato e la terrazza del Pier 17.' },
+  { n: 'Pier 35 (East River)', lat: 40.7095, lng: -73.9875, t: 'w', d: 'Le altalene sul fiume con vista sul Manhattan Bridge.' },
+  { n: 'Corlears Hook Park', lat: 40.7112, lng: -73.9800, t: 'w', d: 'L’ansa dell’East River, punto tranquillo del Lower East Side.' },
+  { n: 'East River Park', lat: 40.7175, lng: -73.9748, t: 'w', d: 'Il nuovo parco rialzato sul fiume, verso il Williamsburg Bridge.' },
+  { n: 'Stuyvesant Cove Park', lat: 40.7335, lng: -73.9745, t: 'w', d: 'Giardino di piante native sull’East River all’altezza della 20ª.' },
+  { n: 'DUMBO, Washington Street', lat: 40.7033, lng: -73.9894, t: 'b', d: 'La foto classica del Manhattan Bridge tra i palazzi in mattoni.' },
+  { n: 'Brooklyn Bridge Park, Pier 1', lat: 40.7020, lng: -73.9965, t: 'bw', d: 'Prati e skyline di Lower Manhattan dall’altra sponda.' },
+  { n: 'Washington Square Park', lat: 40.7308, lng: -73.9973, t: 'v', d: 'L’arco, la fontana e i musicisti di strada.' },
+  { n: 'Jefferson Market Library', lat: 40.7347, lng: -73.9989, t: 'vh', d: 'Ex tribunale vittoriano con la torre dell’orologio, oggi biblioteca.' },
+  { n: 'Union Square e Greenmarket', lat: 40.7359, lng: -73.9906, t: 'vf', d: 'Il mercato contadino (lun, mer, ven, sab) e la libreria Strand vicino.' },
+  { n: 'Astor Place e St. Marks', lat: 40.7295, lng: -73.9900, t: 'v', d: 'Il cubo rotante e l’inizio dell’East Village.' },
+  { n: 'Tompkins Square Park', lat: 40.7265, lng: -73.9818, t: 'v', d: 'Il cuore dell’East Village, olmi secolari e run per cani.' },
+  { n: 'SoHo, Prince e Broadway', lat: 40.7243, lng: -73.9977, t: 'v', d: 'Facciate in ghisa, gallerie e negozi.' },
+  { n: 'Old St. Patrick’s (Nolita)', lat: 40.7237, lng: -73.9951, t: 'vh', d: 'La prima cattedrale di New York, con il cimitero murato.' },
+  { n: 'Little Italy, Mulberry Street', lat: 40.7192, lng: -73.9974, t: 'fh', d: 'Quel che resta della Little Italy storica, tra cannoli e tovaglie a quadri.' },
+  { n: 'Columbus Park (Chinatown)', lat: 40.7156, lng: -73.9999, t: 'fh', d: 'Mahjong e xiangqi all’aperto; Doyers Street a un isolato.' },
+  { n: 'Manhattan Bridge, arco di Canal St', lat: 40.7168, lng: -73.9960, t: 'b', d: 'L’arco monumentale del 1915 all’ingresso del ponte.' },
+  { n: 'Seward Park', lat: 40.7143, lng: -73.9888, t: 'v', d: 'Il primo parco giochi municipale d’America, nel Lower East Side.' },
+  { n: 'Essex Market', lat: 40.7187, lng: -73.9881, t: 'f', d: 'Mercato coperto del Lower East Side: banchi storici e street food.' },
+  { n: 'Katz’s Delicatessen', lat: 40.7223, lng: -73.9874, t: 'f', d: 'Il pastrami più famoso di New York, dal 1888.' },
+  { n: 'Tribeca, caserma dei Ghostbusters', lat: 40.7196, lng: -74.0066, t: 'vh', d: 'Hook & Ladder 8 e le strade di ciottoli di Tribeca.' },
+  { n: 'Abingdon Square e Bleecker St', lat: 40.7373, lng: -74.0055, t: 'vf', d: 'Il West Village più fotografato, tra pasticcerie e boutique.' },
+  { n: 'Bedford e Grove Street', lat: 40.7323, lng: -74.0054, t: 'v', d: 'Case del 1800, Grove Court e l’angolo del palazzo di “Friends”.' },
+  { n: 'Gramercy Park', lat: 40.7379, lng: -73.9862, t: 'v', d: 'L’ultimo parco privato con chiave di Manhattan, da vedere dalla cancellata.' },
+  { n: 'Brooklyn Heights Promenade', lat: 40.6965, lng: -73.9974, t: 'b', e: 1, d: 'La terrazza sopra il fiume con la vista più famosa sullo skyline.' },
+  { n: 'Brooklyn Bridge Park, Pier 6', lat: 40.6936, lng: -74.0016, t: 'bw', e: 1, d: 'L’estremità sud del parco, di fronte a Governors Island.' },
+  { n: 'Domino Park (Williamsburg)', lat: 40.7146, lng: -73.9677, t: 'b', e: 1, d: 'L’ex raffineria di zucchero, raggiunta dal Williamsburg Bridge.' },
+  { n: 'Madison Square Park e Flatiron', lat: 40.7414, lng: -73.9882, t: 'vh', e: 1, d: 'Il Flatiron Building e lo Shake Shack originale.' },
+  { n: 'Chelsea Piers', lat: 40.7466, lng: -74.0090, t: 'w', e: 1, d: 'Il complesso sportivo sull’Hudson all’altezza della 23ª.' }
+];
+
+function hav(a, b) {
+  const R = 6371000, toR = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * toR, dLng = (b.lng - a.lng) * toR;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(arr, rnd) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+// Ordina le tappe come anello chiuso (vicino più prossimo + 2-opt), partenza in indice 0
+function tourOrder(start, list) {
+  const pts = [start, ...list], n = pts.length;
+  if (n === 1) return { stops: [], raw: 0 };
+  const D = pts.map(a => pts.map(b => hav(a, b)));
+  const seen = new Array(n).fill(false); seen[0] = true;
+  let order = [0];
+  for (let k = 1; k < n; k++) {
+    const last = order[order.length - 1]; let best = -1, bd = Infinity;
+    for (let j = 1; j < n; j++) if (!seen[j] && D[last][j] < bd) { bd = D[last][j]; best = j; }
+    seen[best] = true; order.push(best);
+  }
+  let improved = true, guard = 0;
+  while (improved && guard++ < 60) {
+    improved = false;
+    for (let i = 1; i < n - 1; i++) for (let k = i + 1; k < n; k++) {
+      const a = order[i - 1], b = order[i], c = order[k], d = order[(k + 1) % n];
+      if (D[a][c] + D[b][d] < D[a][b] + D[c][d] - 0.5) {
+        order = order.slice(0, i).concat(order.slice(i, k + 1).reverse(), order.slice(k + 1)); improved = true;
+      }
+    }
+  }
+  let raw = 0; for (let i = 0; i < n; i++) raw += D[order[i]][order[(i + 1) % n]];
+  return { stops: order.slice(1).map(i => pts[i]), raw };
+}
+
+// Sceglie le tappe in modo che l'anello stimato si avvicini alla distanza obiettivo
+function selectStops(start, targetM, theme, rnd, factor) {
+  const allowExt = targetM >= 13000;
+  const ok = p => hav(start, p) > 280 && (allowExt || !p.e);
+  const inTheme = p => theme === 'mix' || p.t.includes(theme);
+  const minStops = Math.max(3, Math.min(8, Math.round(targetM / 1500)));
+  const lo = targetM * 0.97, hi = targetM * 1.04;
+  let winner = null;
+  for (let trial = 0; trial < 36; trial++) {
+    const primary = shuffle(POIS.filter(p => ok(p) && inTheme(p)), rnd);
+    const secondary = shuffle(POIS.filter(p => ok(p) && !inTheme(p)), rnd);
+    let best = { stops: [], raw: 0 };
+    const pass = list => {
+      for (const p of list) {
+        if (best.stops.includes(p) || best.stops.length >= 22) continue;
+        const t = tourOrder(start, [...best.stops, p]);
+        if (t.raw * factor <= hi) { best = t; if (t.raw * factor >= lo && best.stops.length >= minStops) return true; }
+      }
+      return false;
+    };
+    if (!pass(primary)) pass(secondary);
+    const off = best.stops.filter(p => !inTheme(p)).length;
+    best.score = Math.abs(best.raw * factor - targetM) / targetM + Math.max(0, minStops - best.stops.length) * 0.12 + off * 0.008;
+    if (!winner || best.score < winner.score) winner = best;
+    if (winner.score < 0.02 && trial >= 6) break;
+  }
+  return winner;
+}
+// CORE-END
+
+/* ================= APP ================= */
+const $ = id => document.getElementById(id);
+const NF = new Intl.NumberFormat('it-IT');
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('ilgiro.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('ilgiro.' + k, JSON.stringify(v)); } catch (e) {} }
+};
+const state = {
+  start: { ...HOME }, startMode: 'home',
+  target: store.get('target', 10000), theme: store.get('theme', 'mix'), dep: 0,
+  settings: store.get('settings', { stride: 75, cadence: 100 }),
+  calib: store.get('calib', 1.25),
+  plan: null, weather: null, session: null, lastPos: null, pinMode: false
+};
+document.querySelectorAll('.appver').forEach(e => e.textContent = 'v' + APP_VERSION);
+$('verLabel').textContent = 'v' + APP_VERSION + ' · Lower Manhattan';
+
+function toast(msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms); }
+const strideM = () => (state.settings.stride || 75) / 100;
+const fmtKm = m => (m / 1000).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
+const fmtMi = m => (m / 1609.344).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
+function fmtDur(min) { min = Math.round(min); const h = Math.floor(min / 60), m = min % 60; return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`; }
+function fmtClock(ms) { const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; }
+const fmtTime = d => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+function depDate() { const d = new Date(); if (state.dep) { d.setHours(d.getHours() + state.dep, 0, 0, 0); } return d; }
+function estMinutes(steps) { return steps / (state.settings.cadence || 100); }
+
+/* ---------- Map ---------- */
+const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([40.722, -74.0], 13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd', maxZoom: 20, attribution: '© OpenStreetMap © CARTO'
+}).addTo(map);
+map.attributionControl.setPrefix(false);
+const startMarker = L.marker([HOME.lat, HOME.lng], {
+  draggable: true, zIndexOffset: 1000,
+  icon: L.divIcon({ className: 'start-pin', html: '<div>P</div>', iconSize: [30, 30], iconAnchor: [15, 15] })
+}).addTo(map);
+const routeLine = L.polyline([], { color: '#E8562A', weight: 5, opacity: .9, lineJoin: 'round' }).addTo(map);
+const trackLine = L.polyline([], { color: '#1D6FE8', weight: 5, opacity: .85 }).addTo(map);
+const stopLayer = L.layerGroup().addTo(map);
+let meDot = null, meAcc = null;
+
+startMarker.on('dragend', () => { const p = startMarker.getLatLng(); setStart({ lat: p.lat, lng: p.lng, label: 'Punto sulla mappa' }, 'pin', true); });
+map.on('click', e => {
+  if (!state.pinMode) return;
+  state.pinMode = false; $('pinHint').hidden = true;
+  setStart({ lat: e.latlng.lat, lng: e.latlng.lng, label: 'Punto sulla mappa' }, 'pin', true);
+});
+$('fabFit').onclick = fitAll;
+$('fabMe').onclick = () => { if (state.lastPos) map.setView([state.lastPos.lat, state.lastPos.lng], 16); else locateOnce(false); };
+
+function fitAll() {
+  const pts = [];
+  if (state.plan) pts.push(...state.plan.line);
+  if (state.session) pts.push(...state.session.track.map(p => [p.lat, p.lng]));
+  pts.push([state.start.lat, state.start.lng]);
+  if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30] });
+  else map.setView([state.start.lat, state.start.lng], 15);
+}
+
+/* ---------- Start point ---------- */
+function setStart(p, mode, geocode) {
+  state.start = { lat: p.lat, lng: p.lng, label: p.label };
+  state.startMode = mode;
+  startMarker.setLatLng([p.lat, p.lng]);
+  $('startLabel').textContent = p.label;
+  $('startBadge').textContent = { home: 'Casa', pin: 'Fissato', gps: 'Live' }[mode];
+  ['btnHome', 'btnPin', 'btnGps'].forEach(id => $(id).classList.remove('on'));
+  $({ home: 'btnHome', pin: 'btnPin', gps: 'btnGps' }[mode]).classList.add('on');
+  clearPlan();
+  loadWeather();
+  if (geocode) reverseGeocode(p);
+}
+async function reverseGeocode(p) {
+  try {
+    const r = await fetchT(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${p.lat}&lon=${p.lng}`, 6000);
+    const j = await r.json(); const a = j.address || {};
+    const label = [a.house_number, a.road].filter(Boolean).join(' ') || a.neighbourhood || a.suburb;
+    if (label && state.start.lat === p.lat) { state.start.label = label; $('startLabel').textContent = label; }
+  } catch (e) {}
+}
+$('btnHome').onclick = () => { state.pinMode = false; $('pinHint').hidden = true; setStart(HOME, 'home'); map.setView([HOME.lat, HOME.lng], 15); };
+$('btnPin').onclick = () => {
+  state.pinMode = true; $('pinHint').hidden = false;
+  ['btnHome', 'btnPin', 'btnGps'].forEach(id => $(id).classList.remove('on')); $('btnPin').classList.add('on');
+  map.setView([state.start.lat, state.start.lng], 15);
+};
+$('btnGps').onclick = () => { state.pinMode = false; $('pinHint').hidden = true; locateOnce(true); };
+
+/* ---------- GPS ---------- */
+let watchId = null;
+function geoErr(e) {
+  const msg = e && e.code === 1 ? 'Posizione negata: attivala in Impostazioni › Privacy › Localizzazione › Safari' : 'Posizione non disponibile, riprova all’aperto';
+  toast(msg, 4200); setGps('bad', 'GPS non disponibile');
+}
+function locateOnce(asStart) {
+  if (!navigator.geolocation) return toast('Questo browser non supporta il GPS');
+  toast('Cerco la tua posizione…', 1800);
+  navigator.geolocation.getCurrentPosition(pos => {
+    onPos(pos);
+    if (asStart) {
+      const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: 'La mia posizione' };
+      setStart(p, 'gps', true); map.setView([p.lat, p.lng], 15);
+      if (p.lat < 40.69 || p.lat > 40.76 || p.lng > -73.96 || p.lng < -74.03) toast('Sei fuori da Lower Manhattan: il giro parte da qui, le tappe restano downtown', 4500);
+    } else map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+    startWatch();
+  }, geoErr, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+}
+function startWatch() {
+  if (watchId !== null || !navigator.geolocation) return;
+  watchId = navigator.geolocation.watchPosition(onPos, geoErr, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+}
+function setGps(cls, txt) { $('gpsDot').className = 'dot ' + cls; $('gpsText').textContent = txt; }
+function onPos(pos) {
+  const c = pos.coords, p = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, t: pos.timestamp || Date.now() };
+  state.lastPos = p;
+  if (!meDot) {
+    meAcc = L.circle([p.lat, p.lng], { radius: p.acc, color: '#1D6FE8', weight: 0, fillOpacity: .12 }).addTo(map);
+    meDot = L.circleMarker([p.lat, p.lng], { radius: 7, color: '#fff', weight: 3, fillColor: '#1D6FE8', fillOpacity: 1 }).addTo(map);
+  } else { meDot.setLatLng([p.lat, p.lng]); meAcc.setLatLng([p.lat, p.lng]).setRadius(p.acc); }
+  if (state.startMode === 'gps' && !state.plan && !state.session) {
+    state.start.lat = p.lat; state.start.lng = p.lng; startMarker.setLatLng([p.lat, p.lng]);
+  }
+  setGps(p.acc <= 30 ? 'ok' : 'bad', `GPS ±${Math.round(p.acc)} m`);
+  if (state.session && !state.session.paused) sessionPoint(p);
+}
+
+/* ---------- Network ---------- */
+async function fetchT(url, ms = 10000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); return r; }
+  finally { clearTimeout(t); }
+}
+async function routeOSRM(pts) {
+  const coords = pts.map(p => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+  const r = await fetchT(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`, 12000);
+  const j = await r.json();
+  if (j.code !== 'Ok') throw new Error(j.code);
+  return { dist: j.routes[0].distance, line: j.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), src: 'OSRM' };
+}
+function decodePoly6(str) {
+  let i = 0, lat = 0, lng = 0; const out = [];
+  while (i < str.length) {
+    for (const k of [0, 1]) {
+      let shift = 0, result = 0, b;
+      do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+      const d = (result & 1) ? ~(result >> 1) : (result >> 1);
+      if (k === 0) lat += d; else lng += d;
+    }
+    out.push([lat / 1e6, lng / 1e6]);
+  }
+  return out;
+}
+async function routeValhalla(pts) {
+  const body = { locations: pts.map(p => ({ lat: p.lat, lon: p.lng, type: 'break' })), costing: 'pedestrian', units: 'kilometers' };
+  const r = await fetchT('https://valhalla1.openstreetmap.de/route?json=' + encodeURIComponent(JSON.stringify(body)), 14000);
+  const j = await r.json();
+  const line = []; j.trip.legs.forEach(l => line.push(...decodePoly6(l.shape)));
+  return { dist: j.trip.summary.length * 1000, line, src: 'Valhalla' };
+}
+async function route(pts) {
+  try { return await routeOSRM(pts); }
+  catch (e) { try { return await routeValhalla(pts); } catch (e2) { return null; } }
+}
+
+/* ---------- Planning ---------- */
+function clearPlan() {
+  state.plan = null; store.set('plan', null);
+  routeLine.setLatLngs([]); stopLayer.clearLayers();
+  $('planCard').hidden = true; $('stopsCard').hidden = true;
+  renderWeather();
+}
+async function makePlan(again) {
+  if (state.startMode === 'gps' && state.lastPos) { state.start.lat = state.lastPos.lat; state.start.lng = state.lastPos.lng; }
+  const btn = again ? $('btnAgain') : $('btnPlan'), old = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spin" style="border-color:rgba(127,127,127,.35);border-top-color:currentColor"></span> Creo il giro…';
+  const targetM = state.target * strideM();
+  const rnd = mulberry32((Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0);
+  let factor = state.calib, best = null;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const sel = selectStops(state.start, targetM, state.theme, rnd, factor);
+      if (!sel.stops.length) break;
+      const pts = [state.start, ...sel.stops, state.start];
+      const r = await route(pts);
+      const cand = r ? { ...r, stops: sel.stops, raw: sel.raw }
+                     : { dist: sel.raw * factor, line: pts.map(p => [p.lat, p.lng]), src: 'stima', stops: sel.stops, raw: sel.raw };
+      cand.err = Math.abs(cand.dist - targetM) / targetM;
+      if (!best || cand.err < best.err) best = cand;
+      if (!r) break;
+      factor = Math.min(1.6, Math.max(1.05, r.dist / sel.raw));
+      state.calib = +(state.calib * 0.6 + factor * 0.4).toFixed(3); store.set('calib', state.calib);
+      if (cand.err <= 0.06) break;
+    }
+  } finally { btn.disabled = false; btn.innerHTML = old; }
+  if (!best) { toast('Non riesco a creare il giro da questo punto'); return; }
+  state.plan = {
+    start: { ...state.start }, target: state.target, theme: state.theme,
+    stops: best.stops.map(s => ({ n: s.n, d: s.d, lat: s.lat, lng: s.lng })),
+    line: best.line, dist: best.dist, src: best.src
+  };
+  store.set('plan', state.plan);
+  drawPlan(true); renderPlan(); renderWeather();
+}
+function drawPlan(fit) {
+  const p = state.plan; if (!p) return;
+  routeLine.setLatLngs(p.line);
+  routeLine.setStyle({ dashArray: p.src === 'stima' ? '8 8' : null });
+  stopLayer.clearLayers();
+  const visited = state.session ? state.session.visited : [];
+  p.stops.forEach((s, i) => {
+    L.marker([s.lat, s.lng], { icon: L.divIcon({ className: 'stop-ic' + (visited.includes(i) ? ' done' : ''), html: `<div>${i + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
+      .bindPopup(`<b>${i + 1}. ${s.n}</b><br>${s.d}`).addTo(stopLayer);
+  });
+  if (fit) fitAll();
+}
+function gmapsUrl(p) {
+  let w = p.stops; if (w.length > 9) { const step = w.length / 9; w = Array.from({ length: 9 }, (_, i) => p.stops[Math.floor(i * step)]); }
+  const ll = s => `${s.lat.toFixed(6)},${s.lng.toFixed(6)}`;
+  return `https://www.google.com/maps/dir/?api=1&travelmode=walking&origin=${ll(p.start)}&destination=${ll(p.start)}&waypoints=${encodeURIComponent(w.map(ll).join('|'))}`;
+}
+const appleLeg = s => `https://maps.apple.com/?daddr=${s.lat},${s.lng}&dirflg=w`;
+const googleLeg = s => `https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=${s.lat},${s.lng}`;
+function renderPlan() {
+  const p = state.plan; if (!p) return;
+  const steps = Math.round(p.dist / strideM()), mins = estMinutes(steps), dep = depDate();
+  $('planCard').hidden = false; $('stopsCard').hidden = false;
+  $('planTitle').textContent = `${THEMES.find(t => t.id === p.theme).name} · ${p.stops.length} tappe`;
+  $('planSrc').textContent = p.src === 'stima' ? 'Percorso indicativo' : 'Percorso pedonale';
+  $('pSteps').textContent = '~' + NF.format(Math.round(steps / 10) * 10);
+  $('pTarget').textContent = 'obiettivo ' + NF.format(p.target);
+  $('pDist').textContent = fmtKm(p.dist); $('pMiles').textContent = fmtMi(p.dist);
+  $('pTime').textContent = fmtDur(mins); $('pPace').textContent = `a ${state.settings.cadence} passi/min, senza soste`;
+  $('pBack').textContent = fmtTime(new Date(dep.getTime() + mins * 60000));
+  $('pDep').textContent = 'partenza ' + (state.dep ? fmtTime(dep) : 'ora');
+  $('planNote').textContent = p.src === 'stima'
+    ? 'Servizio percorsi non raggiungibile: la linea tratteggiata è indicativa, segui le tappe.'
+    : 'Il giro torna sempre al punto di partenza. Tocca una tappa sulla mappa per i dettagli.';
+  $('btnGmaps').href = gmapsUrl(p);
+  $('stopsList').innerHTML = p.stops.map((s, i) => `
+    <li><span class="num">${i + 1}</span><div><div class="stop-name">${s.n}</div><div class="stop-desc">${s.d}</div>
+    <div class="links"><a href="${appleLeg(s)}" target="_blank" rel="noopener">Mappe Apple</a><a href="${googleLeg(s)}" target="_blank" rel="noopener">Google Maps</a></div></div></li>`).join('');
+}
+$('btnPlan').onclick = () => makePlan(false);
+$('btnAgain').onclick = () => makePlan(true);
+
+/* ---------- Chips ---------- */
+function renderChips() {
+  $('targetChips').innerHTML = TARGETS.map(t => {
+    const km = t * strideM() / 1000;
+    return `<button class="chip ${t === state.target ? 'on' : ''}" data-t="${t}">${NF.format(t)}<small>${km.toLocaleString('it-IT', { maximumFractionDigits: 1 })} km · ${fmtDur(estMinutes(t))}</small></button>`;
+  }).join('');
+  $('themeChips').innerHTML = THEMES.map(t => `<button class="chip ${t.id === state.theme ? 'on' : ''}" data-th="${t.id}">${t.name}</button>`).join('');
+  const deps = [0, 1, 2, 3, 4];
+  $('depChips').innerHTML = deps.map(d => {
+    const lbl = d === 0 ? 'Ora' : fmtTime(new Date(new Date().setHours(new Date().getHours() + d, 0, 0, 0)));
+    return `<button class="chip ${d === state.dep ? 'on' : ''}" data-d="${d}">${lbl}</button>`;
+  }).join('');
+}
+$('targetChips').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; state.target = +b.dataset.t; store.set('target', state.target); renderChips(); clearPlan(); };
+$('themeChips').onclick = e => { const b = e.target.closest('[data-th]'); if (!b) return; state.theme = b.dataset.th; store.set('theme', state.theme); renderChips(); clearPlan(); };
+$('depChips').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; state.dep = +b.dataset.d; renderChips(); renderPlan(); renderWeather(); };
+
+/* ---------- Weather ---------- */
+const WMO = {
+  0: ['Sereno', '☀️', '🌙'], 1: ['Quasi sereno', '🌤️', '🌙'], 2: ['Parzialmente nuvoloso', '⛅', '☁️'], 3: ['Coperto', '☁️', '☁️'],
+  45: ['Nebbia', '🌫️'], 48: ['Nebbia con brina', '🌫️'], 51: ['Pioggerella debole', '🌦️'], 53: ['Pioggerella', '🌦️'], 55: ['Pioggerella fitta', '🌧️'],
+  56: ['Pioggerella gelata', '🌧️'], 57: ['Pioggerella gelata', '🌧️'], 61: ['Pioggia debole', '🌦️'], 63: ['Pioggia', '🌧️'], 65: ['Pioggia forte', '🌧️'],
+  66: ['Pioggia gelata', '🌧️'], 67: ['Pioggia gelata forte', '🌧️'], 71: ['Neve debole', '🌨️'], 73: ['Neve', '🌨️'], 75: ['Neve forte', '❄️'], 77: ['Granelli di neve', '🌨️'],
+  80: ['Rovesci', '🌦️'], 81: ['Rovesci', '🌧️'], 82: ['Rovesci violenti', '⛈️'], 85: ['Rovesci di neve', '🌨️'], 86: ['Rovesci di neve forti', '❄️'],
+  95: ['Temporale', '⛈️'], 96: ['Temporale con grandine', '⛈️'], 99: ['Temporale con grandine', '⛈️']
+};
+const wDesc = (c, day = 1) => { const w = WMO[c] || ['—', '🌡️']; return { txt: w[0], ic: (!day && w[2]) ? w[2] : w[1] }; };
+const fToC = f => Math.round((f - 32) * 5 / 9);
+function nyKey(d, withMin) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d);
+  const g = t => p.find(x => x.type === t).value;
+  return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${withMin ? g('minute') : '00'}`;
+}
+async function loadWeather() {
+  const { lat, lng } = state.start;
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+  if (state.weather && state.weather.key === key && Date.now() - state.weather.at < 15 * 60000) return renderWeather();
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
+      `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day,precipitation` +
+      `&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m,uv_index,relative_humidity_2m,is_day` +
+      `&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FNew_York&forecast_days=2`;
+    const j = await (await fetchT(url, 10000)).json();
+    state.weather = { key, at: Date.now(), j };
+  } catch (e) { state.weather = null; $('wxBody').innerHTML = '<p class="note">Meteo non disponibile in questo momento. Riprova tra poco.</p>'; $('wearCard').hidden = true; return; }
+  renderWeather();
+}
+function weatherWindow() {
+  const w = state.weather && state.weather.j; if (!w) return null;
+  const dep = depDate();
+  const steps = state.plan ? state.plan.dist / strideM() : state.target;
+  const mins = estMinutes(steps), end = new Date(dep.getTime() + mins * 60000);
+  const H = w.hourly, k0 = nyKey(dep), k1 = nyKey(end);
+  const idx = []; H.time.forEach((t, i) => { if (t >= k0 && t <= k1) idx.push(i); });
+  if (!idx.length) return null;
+  const pick = a => idx.map(i => H[a][i]).filter(v => v !== null && v !== undefined);
+  const severity = c => c >= 95 ? 9 : c >= 71 && c <= 86 && c !== 80 && c !== 81 && c !== 82 ? 8 : c >= 51 ? 6 + (c >= 61 ? 1 : 0) : c >= 45 ? 4 : c;
+  let code = H.weather_code[idx[0]]; idx.forEach(i => { if (severity(H.weather_code[i]) > severity(code)) code = H.weather_code[i]; });
+  const k0m = nyKey(dep, true), k1m = nyKey(end, true);
+  const sunset = (w.daily.sunset || []).find(s => s >= k0m && s <= k1m);
+  return {
+    dep, end, mins, code, isDay: H.is_day[idx[0]],
+    tMin: Math.min(...pick('temperature_2m')), tMax: Math.max(...pick('temperature_2m')),
+    aMin: Math.min(...pick('apparent_temperature')), aMax: Math.max(...pick('apparent_temperature')),
+    pop: Math.max(0, ...pick('precipitation_probability')), wind: Math.max(...pick('wind_speed_10m')),
+    uv: Math.max(0, ...pick('uv_index')), hum: Math.max(...pick('relative_humidity_2m')),
+    sunset: sunset ? sunset.slice(11, 16) : null, steps
+  };
+}
+function renderWeather() {
+  const w = state.weather && state.weather.j; if (!w) return;
+  const win = weatherWindow();
+  const now = !state.dep && w.current;
+  const code = now ? w.current.weather_code : (win ? win.code : 0);
+  const d = wDesc(code, now ? w.current.is_day : (win ? win.isDay : 1));
+  const t = now ? w.current.temperature_2m : (win ? win.tMin : null);
+  const a = now ? w.current.apparent_temperature : (win ? win.aMin : null);
+  const rng = win ? `${Math.round(win.tMin)}–${Math.round(win.tMax)}°F (${fToC(win.tMin)}–${fToC(win.tMax)}°C) dalle ${fmtTime(win.dep)} alle ${fmtTime(win.end)}` : '';
+  $('wxBody').innerHTML = `
+    <div class="wx-head"><div class="wx-icon">${d.ic}</div>
+      <div><div class="wx-temp">${Math.round(t)}°F <span style="font-size:18px;color:var(--muted);font-weight:600">${fToC(t)}°C</span></div>
+      <div style="font-weight:600">${d.txt}${now ? ' · adesso' : ' · alla partenza'}</div></div></div>
+    ${win ? `<p class="note">Durante il giro: ${rng}</p>` : ''}
+    <div class="wx-grid">
+      <div><span>PERCEPITA</span><b>${Math.round(a)}°F · ${fToC(a)}°C</b></div>
+      <div><span>PIOGGIA</span><b>${win ? win.pop : 0}%</b></div>
+      <div><span>VENTO</span><b>${Math.round(win ? win.wind : w.current.wind_speed_10m)} mph</b></div>
+      <div><span>UMIDITÀ</span><b>${Math.round(win ? win.hum : w.current.relative_humidity_2m)}%</b></div>
+      <div><span>UV MAX</span><b>${win ? Math.round(win.uv) : '–'}</b></div>
+      <div><span>TRAMONTO</span><b>${(w.daily.sunset[0] || '').slice(11, 16)}</b></div>
+    </div>`;
+  if (win) { $('wearCard').hidden = false; $('wearList').innerHTML = outfit(win).map(x => `<li><span class="ic">${x[0]}</span><span>${x[1]}</span></li>`).join(''); }
+}
+function outfit(w) {
+  const a = w.aMin, out = [];
+  if (a >= 85) out.push(['👕', 'Maglietta tecnica leggera e pantaloncini; cappellino e occhiali da sole']);
+  else if (a >= 75) out.push(['👕', 'T-shirt traspirante, pantaloncini o pantaloni leggeri']);
+  else if (a >= 65) out.push(['👕', 'T-shirt più uno strato leggero da legare in vita (camicia o overshirt)']);
+  else if (a >= 55) out.push(['🧥', 'Maglia a maniche lunghe o felpa leggera, pantaloni lunghi']);
+  else if (a >= 45) out.push(['🧥', 'Felpa e giacca leggera antivento, pantaloni lunghi']);
+  else if (a >= 35) out.push(['🧣', 'Strato termico, piumino leggero, berretto e guanti leggeri']);
+  else out.push(['🧤', 'Intimo termico, piumino caldo, berretto, guanti e scaldacollo; calze di lana']);
+  if (w.aMax - w.aMin >= 8) out.push(['🔄', `La temperatura cambia di ${Math.round(w.aMax - w.aMin)}°F durante il giro: vestiti a strati`]);
+  const snow = w.code >= 71 && w.code <= 77 || w.code === 85 || w.code === 86;
+  if (snow) out.push(['🥾', 'Neve: scarpe impermeabili con suola che tiene sul bagnato e sul ghiaccio']);
+  else if (w.pop >= 50 || (w.code >= 51 && w.code <= 82)) out.push(['☔', `Pioggia probabile (${w.pop}%): giacca impermeabile con cappuccio e scarpe che non temono l’acqua`]);
+  else if (w.pop >= 20) out.push(['🧥', `Pioggia possibile (${w.pop}%): un k-way ripiegato in tasca`]);
+  if (w.wind >= 15) out.push(['💨', `Vento fino a ${Math.round(w.wind)} mph: sul lungofiume si sente di più, porta uno strato antivento`]);
+  if (w.uv >= 6) out.push(['🧴', 'UV alto: crema solare SPF 30+, occhiali e cappellino']);
+  else if (w.uv >= 3 && w.code <= 2) out.push(['🕶️', 'Sole: occhiali e un velo di crema solare sul viso']);
+  if (w.aMax >= 80 && w.hum >= 65) out.push(['💧', 'Afa: acqua extra e pause all’ombra']);
+  if (w.sunset) out.push(['🔦', `Tramonta alle ${w.sunset} durante il giro: un capo chiaro o con inserti riflettenti`]);
+  if (w.steps >= 20000) out.push(['🎒', 'Giro lungo: calze tecniche, borraccia, uno snack e un power bank per il GPS']);
+  else if (w.steps >= 12000) out.push(['🚰', 'Porta una borraccia (fontanelle lungo Hudson River Park)']);
+  out.push(['👟', 'Scarpe comode da camminata, già rodate']);
+  return out;
+}
+
+/* ---------- Walk session ---------- */
+let wakeLock = null, tick = null;
+async function keepAwake() { try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.session && !state.session.paused) keepAwake(); });
+function elapsed(s) { return s.accMs + (s.paused ? 0 : Date.now() - s.runningSince); }
+function saveSession() { store.set('session', state.session); }
+function startWalk() {
+  if (!state.plan) return;
+  state.session = { plan: state.plan, startTs: Date.now(), runningSince: Date.now(), accMs: 0, paused: false, dist: 0, track: [], visited: [], back: false };
+  saveSession(); enterWalkUI(); startWatch(); keepAwake();
+  if (state.lastPos && Date.now() - state.lastPos.t < 20000 && state.lastPos.acc <= 40) sessionPoint(state.lastPos);
+  toast('Buon giro! Il GPS sta registrando');
+}
+function enterWalkUI() {
+  document.body.classList.add('walking');
+  $('planner').hidden = true; $('walk').hidden = false;
+  state.plan = state.session.plan; drawPlan(false);
+  trackLine.setLatLngs(state.session.track.map(p => [p.lat, p.lng]));
+  setTimeout(() => { map.invalidateSize(); fitAll(); }, 280);
+  clearInterval(tick); tick = setInterval(updateWalkUI, 1000); updateWalkUI();
+  $('btnPause').textContent = state.session.paused ? 'Riprendi' : 'Pausa';
+}
+function sessionPoint(p) {
+  const s = state.session; if (p.acc > 40) return;
+  const last = s.track[s.track.length - 1];
+  if (!last) { s.track.push({ lat: p.lat, lng: p.lng, t: p.t }); saveSession(); return; }
+  const d = hav(last, p), dt = Math.max(1, (p.t - last.t) / 1000);
+  if (d < Math.max(5, p.acc * 0.6)) return;
+  if (d / dt > 4.5) return; // salto GPS improbabile a piedi
+  s.track.push({ lat: p.lat, lng: p.lng, t: p.t }); s.dist += d;
+  trackLine.addLatLng([p.lat, p.lng]);
+  s.plan.stops.forEach((st, i) => { if (!s.visited.includes(i) && hav(st, p) < 70) { s.visited.push(i); toast(`Tappa ${i + 1}: ${st.n} ✓`); drawPlan(false); } });
+  if (!s.back && s.dist > s.plan.dist * 0.85 && hav(s.plan.start, p) < 90) { s.back = true; $('backBanner').hidden = false; if (navigator.vibrate) navigator.vibrate(200); }
+  saveSession(); updateWalkUI();
+}
+function updateWalkUI() {
+  const s = state.session; if (!s) return;
+  const ms = elapsed(s), steps = Math.round(s.dist / strideM()), target = s.plan.target;
+  $('wSteps').textContent = NF.format(steps);
+  const pct = Math.min(100, Math.round(steps / target * 100));
+  $('wPct').textContent = pct + '%'; $('wBar').style.width = pct + '%';
+  $('wGoal').textContent = 'di ' + NF.format(target);
+  $('wTime').textContent = fmtClock(ms);
+  $('wDist').textContent = (s.dist / 1000).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' km';
+  $('wLeft').textContent = steps >= target ? 'Fatto!' : NF.format(target - steps);
+  const pace = s.dist > 150 ? (ms / 60000) / (s.dist / 1000) : null;
+  $('wPace').textContent = pace ? `${Math.floor(pace)}'${String(Math.round(pace % 1 * 60)).padStart(2, '0')}"/km` : '–';
+  $('wTitle').textContent = s.paused ? 'In pausa' : 'Giro in corso';
+  const next = s.plan.stops.findIndex((_, i) => !s.visited.includes(i));
+  if (next === -1) {
+    $('nextName').textContent = 'Rientro a ' + s.plan.start.label;
+    $('nextLinks').innerHTML = `<a href="${appleLeg(s.plan.start)}" target="_blank" rel="noopener">Mappe Apple</a><a href="${googleLeg(s.plan.start)}" target="_blank" rel="noopener">Google Maps</a>`;
+  } else {
+    const st = s.plan.stops[next];
+    const dd = state.lastPos ? ` · ${Math.round(hav(state.lastPos, st))} m in linea d’aria` : '';
+    $('nextName').textContent = `${next + 1}. ${st.n}${dd}`;
+    $('nextLinks').innerHTML = `<a href="${appleLeg(st)}" target="_blank" rel="noopener">Mappe Apple</a><a href="${googleLeg(st)}" target="_blank" rel="noopener">Google Maps</a>`;
+  }
+}
+$('btnStart').onclick = startWalk;
+$('btnPause').onclick = () => {
+  const s = state.session; if (!s) return;
+  if (s.paused) { s.paused = false; s.runningSince = Date.now(); keepAwake(); }
+  else { s.accMs += Date.now() - s.runningSince; s.paused = true; }
+  $('btnPause').textContent = s.paused ? 'Riprendi' : 'Pausa'; saveSession(); updateWalkUI();
+};
+$('btnFinish').onclick = () => {
+  const s = state.session; if (!s) return;
+  if (!confirm('Terminare il giro?')) return;
+  const ms = elapsed(s);
+  const rec = {
+    id: Date.now(), date: s.startTs, ms, dist: s.dist, steps: Math.round(s.dist / strideM()),
+    target: s.plan.target, theme: s.plan.theme, start: s.plan.start,
+    track: simplify(s.track.map(p => [p.lat, p.lng]), 400), plan: simplify(s.plan.line, 400), real: null
+  };
+  const h = store.get('history', []); h.unshift(rec); store.set('history', h.slice(0, 50));
+  state.session = null; store.set('session', null); clearInterval(tick);
+  if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+  document.body.classList.remove('walking'); $('walk').hidden = true; $('planner').hidden = false; $('backBanner').hidden = true;
+  trackLine.setLatLngs([]); drawPlan(false); setTimeout(() => map.invalidateSize(), 280);
+  openSummary(rec);
+};
+function simplify(pts, max) { if (pts.length <= max) return pts; const step = pts.length / max; const out = []; for (let i = 0; i < max; i++) out.push(pts[Math.floor(i * step)]); out.push(pts[pts.length - 1]); return out; }
+
+/* ---------- Summary & share image ---------- */
+let curRec = null, curBlob = null;
+async function openSummary(rec) {
+  curRec = rec; curBlob = null;
+  $('realSteps').value = rec.real || '';
+  $('sumTitle').textContent = 'Giro completato · ' + new Date(rec.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  $('summary').hidden = false;
+  $('sumImg').removeAttribute('src');
+  await refreshImage();
+}
+async function refreshImage() {
+  const blob = await renderCard(curRec);
+  curBlob = blob;
+  const url = URL.createObjectURL(blob);
+  $('sumImg').src = url; $('btnSave').href = url;
+  $('btnSave').download = `il-giro-${new Date(curRec.date).toISOString().slice(0, 10)}.png`;
+}
+let realT = null;
+$('realSteps').oninput = () => {
+  clearTimeout(realT);
+  realT = setTimeout(() => {
+    const v = parseInt($('realSteps').value, 10);
+    curRec.real = v > 0 ? v : null;
+    const h = store.get('history', []); const i = h.findIndex(x => x.id === curRec.id); if (i > -1) { h[i].real = curRec.real; store.set('history', h); }
+    refreshImage();
+  }, 500);
+};
+$('btnShare').onclick = async () => {
+  if (!curBlob) return;
+  const file = new File([curBlob], 'il-giro.png', { type: 'image/png' });
+  const steps = curRec.real || curRec.steps;
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'Il Giro', text: `${NF.format(steps)} passi in ${fmtClock(curRec.ms)} a Lower Manhattan` });
+    else { window.open($('sumImg').src, '_blank'); toast('Tieni premuto sull’immagine per salvarla'); }
+  } catch (e) {}
+};
+$('btnClose').onclick = () => { $('summary').hidden = true; };
+
+const loadImg = src => new Promise(res => {
+  const im = new Image(); im.crossOrigin = 'anonymous';
+  const t = setTimeout(() => res(null), 8000);
+  im.onload = () => { clearTimeout(t); res(im); }; im.onerror = () => { clearTimeout(t); res(null); };
+  im.src = src;
+});
+async function renderCard(rec, noTiles) {
+  const W = 1080, H = 1350, MX = 40, MY = 150, MW = 1000, MH = 820;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const font = (w, s) => `${w} ${s}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif`;
+  g.fillStyle = '#F6F3EE'; g.fillRect(0, 0, W, H);
+  // header
+  g.fillStyle = '#E8562A'; roundRect(g, MX, 46, 64, 64, 18); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = 6; g.lineCap = 'round';
+  g.beginPath(); g.arc(MX + 32, 46 + 32, 17, Math.PI * 0.75, Math.PI * 2.55); g.stroke();
+  g.fillStyle = '#16202E'; g.font = font(800, 46); g.fillText('Il Giro', MX + 84, 92);
+  g.fillStyle = '#6B7280'; g.font = font(500, 26);
+  const dateStr = new Date(rec.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  g.textAlign = 'right'; g.fillText(dateStr, W - MX, 90); g.textAlign = 'left';
+  // map area
+  const all = (rec.track.length > 1 ? rec.track : []).concat(rec.plan || []);
+  if (!all.length) all.push([rec.start.lat, rec.start.lng]);
+  const proj = (lat, lng, z) => { const s = 256 * 2 ** z, r = Math.PI / 180; return [(lng + 180) / 360 * s, (1 - Math.log(Math.tan(lat * r) + 1 / Math.cos(lat * r)) / Math.PI) / 2 * s]; };
+  let z = 17, sc = 1, P;
+  for (; z >= 10; z--) {
+    P = all.map(p => proj(p[0], p[1], z));
+    const xs = P.map(p => p[0]), ys = P.map(p => p[1]);
+    const bw = Math.max(...xs) - Math.min(...xs) + 1, bh = Math.max(...ys) - Math.min(...ys) + 1;
+    sc = Math.min((MW - 120) / bw, (MH - 120) / bh);
+    if (sc >= 1) break;
+  }
+  sc = Math.min(sc, 2.4);
+  const xs = P.map(p => p[0]), ys = P.map(p => p[1]);
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  const ox = cx - MW / 2 / sc, oy = cy - MH / 2 / sc;
+  const toC = (lat, lng) => { const q = proj(lat, lng, z); return [MX + (q[0] - ox) * sc, MY + (q[1] - oy) * sc]; };
+  g.save(); roundRect(g, MX, MY, MW, MH, 34); g.clip();
+  g.fillStyle = '#ECE8E1'; g.fillRect(MX, MY, MW, MH);
+  if (!noTiles) {
+    const t0x = Math.floor(ox / 256), t0y = Math.floor(oy / 256), t1x = Math.floor((ox + MW / sc) / 256), t1y = Math.floor((oy + MH / sc) / 256);
+    const jobs = [];
+    for (let tx = t0x; tx <= t1x; tx++) for (let ty = t0y; ty <= t1y; ty++) {
+      const sub = 'abcd'[(tx + ty) & 3];
+      jobs.push(loadImg(`https://${sub}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}@2x.png`).then(im => ({ im, tx, ty })));
+    }
+    (await Promise.all(jobs)).forEach(({ im, tx, ty }) => { if (im) g.drawImage(im, MX + (tx * 256 - ox) * sc, MY + (ty * 256 - oy) * sc, 256 * sc + 1, 256 * sc + 1); });
+  }
+  const stroke = (pts, color, width, dash) => {
+    if (pts.length < 2) return;
+    g.setLineDash(dash || []); g.strokeStyle = color; g.lineWidth = width; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); pts.forEach((p, i) => { const q = toC(p[0], p[1]); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke(); g.setLineDash([]);
+  };
+  const walked = rec.track.length > 1;
+  if (rec.plan) stroke(rec.plan, walked ? 'rgba(232,86,42,.45)' : '#E8562A', walked ? 7 : 10, walked ? [14, 12] : null);
+  if (walked) { stroke(rec.track, '#ffffff', 16); stroke(rec.track, '#E8562A', 10); }
+  const sp = toC(rec.start.lat, rec.start.lng);
+  g.fillStyle = '#16202E'; g.strokeStyle = '#fff'; g.lineWidth = 6; g.beginPath(); g.arc(sp[0], sp[1], 20, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.fillStyle = '#fff'; g.font = font(800, 20); g.textAlign = 'center'; g.fillText('P', sp[0], sp[1] + 7); g.textAlign = 'left';
+  g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(MX + MW - 270, MY + MH - 30, 270, 30);
+  g.fillStyle = '#6B7280'; g.font = font(500, 16); g.textAlign = 'right'; g.fillText('© OpenStreetMap © CARTO', MX + MW - 12, MY + MH - 10); g.textAlign = 'left';
+  g.restore();
+  // stats
+  const steps = rec.real || rec.steps;
+  g.fillStyle = '#16202E'; g.font = font(800, 96); g.fillText(NF.format(steps), MX, 1090);
+  const sw = g.measureText(NF.format(steps)).width;
+  g.font = font(600, 34); g.fillStyle = '#E8562A'; g.fillText(rec.real ? 'passi' : 'passi stimati', MX + sw + 18, 1090);
+  const cols = [['Tempo', fmtClock(rec.ms)], ['Distanza', fmtKm(rec.dist)], ['Ritmo', rec.dist > 150 ? (() => { const p = rec.ms / 60000 / (rec.dist / 1000); return `${Math.floor(p)}'${String(Math.round(p % 1 * 60)).padStart(2, '0')}"/km`; })() : '–']];
+  cols.forEach((col, i) => {
+    const x = MX + i * 340;
+    g.fillStyle = '#6B7280'; g.font = font(600, 26); g.fillText(col[0].toUpperCase(), x, 1160);
+    g.fillStyle = '#16202E'; g.font = font(750, 46); g.fillText(col[1], x, 1215);
+  });
+  g.fillStyle = '#6B7280'; g.font = font(500, 24);
+  const th = (THEMES.find(t => t.id === rec.theme) || {}).name || '';
+  g.fillText(`Lower Manhattan · ${th} · partenza ${rec.start.label}`, MX, 1292);
+  g.textAlign = 'right'; g.fillText('Il Giro v' + APP_VERSION, W - MX, 1292); g.textAlign = 'left';
+  return new Promise(res => {
+    try { c.toBlob(b => b ? res(b) : renderCard(rec, true).then(res), 'image/png'); }
+    catch (e) { renderCard(rec, true).then(res); }
+  });
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+/* ---------- Settings & history ---------- */
+function renderHistory() {
+  const h = store.get('history', []);
+  $('histList').innerHTML = h.length ? h.map(r => `<li><span><b>${NF.format(r.real || r.steps)}</b> passi · ${fmtClock(r.ms)} · ${fmtKm(r.dist)}<br><small style="color:var(--muted)">${new Date(r.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}</small></span><button data-id="${r.id}">Condividi</button></li>`).join('')
+    : '<li><span style="color:var(--muted)">Nessun giro ancora. Il primo è il più bello.</span></li>';
+}
+$('btnSettings').onclick = () => { $('setStride').value = state.settings.stride; $('setCad').value = state.settings.cadence; renderHistory(); $('settings').hidden = false; };
+$('btnSetClose').onclick = () => {
+  const st = parseInt($('setStride').value, 10), cd = parseInt($('setCad').value, 10);
+  if (st >= 50 && st <= 110) state.settings.stride = st;
+  if (cd >= 70 && cd <= 140) state.settings.cadence = cd;
+  store.set('settings', state.settings); $('settings').hidden = true;
+  renderChips(); renderPlan(); renderWeather();
+};
+$('histList').onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; const r = store.get('history', []).find(x => x.id === +b.dataset.id); if (r) { $('settings').hidden = true; openSummary(r); } };
+$('btnClearHist').onclick = () => { if (confirm('Cancellare tutto lo storico dei giri?')) { store.set('history', []); renderHistory(); } };
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.hidden = true; }));
+
+/* ---------- Boot ---------- */
+renderChips();
+const savedSession = store.get('session', null);
+if (savedSession) {
+  state.session = savedSession; state.start = { ...savedSession.plan.start };
+  startMarker.setLatLng([state.start.lat, state.start.lng]); $('startLabel').textContent = state.start.label;
+  enterWalkUI(); startWatch(); keepAwake(); toast('Giro in corso ripreso');
+} else {
+  const savedPlan = store.get('plan', null);
+  if (savedPlan && savedPlan.start && savedPlan.start.lat === HOME.lat) { state.plan = savedPlan; state.target = savedPlan.target; state.theme = savedPlan.theme; renderChips(); drawPlan(true); renderPlan(); }
+  else map.setView([HOME.lat, HOME.lng], 14);
+}
+loadWeather();
+</script>
+</body>
+</html>
