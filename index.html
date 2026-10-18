@@ -151,7 +151,7 @@ ol.stops li:first-child{border-top:0}
     <div class="logo" aria-hidden="true">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 17.5a6.5 6.5 0 1 1 3.2 2.3"/><circle cx="6" cy="17.5" r="1.6" fill="#fff" stroke="none"/></svg>
     </div>
-    <div><h1>Il Giro</h1><span class="ver" id="verLabel">v1.0.0 · Lower Manhattan</span></div>
+    <div><h1>Il Giro</h1><span class="ver" id="verLabel">v1.0.1 · Lower Manhattan</span></div>
   </div>
   <button class="icon-btn" id="btnSettings" aria-label="Impostazioni e storico">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
@@ -247,8 +247,8 @@ ol.stops li:first-child{border-top:0}
   </div>
 
   <div class="foot">
-    Il Giro <span class="appver">v1.0.0</span><br>
-    Mappe © OpenStreetMap, © CARTO · Percorsi OSRM / Valhalla (FOSSGIS) · Meteo Open-Meteo<br>
+    Il Giro <span class="appver">v1.0.1</span><br>
+    Mappe © OpenStreetMap · Percorsi OSRM / Valhalla (FOSSGIS) · Meteo Open-Meteo<br>
     Passi stimati da distanza e lunghezza del passo
   </div>
 </main>
@@ -329,7 +329,7 @@ ol.stops li:first-child{border-top:0}
       <button class="btn ghost" id="btnClearHist">Svuota storico</button>
       <button class="btn dark" id="btnSetClose">Fatto</button>
     </div>
-    <div class="foot">Il Giro <span class="appver">v1.0.0</span> · dati salvati solo su questo iPhone</div>
+    <div class="foot">Il Giro <span class="appver">v1.0.1</span> · dati salvati solo su questo iPhone</div>
   </div>
 </div>
 
@@ -337,7 +337,7 @@ ol.stops li:first-child{border-top:0}
 
 <script>
 // CORE-START
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const HOME = { lat: 40.73445, lng: -74.00275, label: '228 W 4th St' };
 const TARGETS = [8000, 10000, 15000, 20000, 25000, 30000];
 const THEMES = [
@@ -490,8 +490,8 @@ function estMinutes(steps) { return steps / (state.settings.cadence || 100); }
 
 /* ---------- Map ---------- */
 const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([40.722, -74.0], 13);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  subdomains: 'abcd', maxZoom: 20, attribution: '© OpenStreetMap © CARTO'
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, crossOrigin: true, attribution: '© OpenStreetMap'
 }).addTo(map);
 map.attributionControl.setPrefix(false);
 const startMarker = L.marker([HOME.lat, HOME.lng], {
@@ -980,6 +980,8 @@ async function renderCard(rec, noTiles) {
     if (sc >= 1) break;
   }
   sc = Math.min(sc, 2.4);
+  // tiles OSM a 256 px: un livello di zoom in più e scala dimezzata = immagine più nitida
+  if (sc > 1.1 && z < 18) { z++; sc /= 2; P = all.map(p => proj(p[0], p[1], z)); }
   const xs = P.map(p => p[0]), ys = P.map(p => p[1]);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
   const ox = cx - MW / 2 / sc, oy = cy - MH / 2 / sc;
@@ -990,8 +992,7 @@ async function renderCard(rec, noTiles) {
     const t0x = Math.floor(ox / 256), t0y = Math.floor(oy / 256), t1x = Math.floor((ox + MW / sc) / 256), t1y = Math.floor((oy + MH / sc) / 256);
     const jobs = [];
     for (let tx = t0x; tx <= t1x; tx++) for (let ty = t0y; ty <= t1y; ty++) {
-      const sub = 'abcd'[(tx + ty) & 3];
-      jobs.push(loadImg(`https://${sub}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}@2x.png`).then(im => ({ im, tx, ty })));
+      jobs.push(loadImg(`https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`).then(im => ({ im, tx, ty })));
     }
     (await Promise.all(jobs)).forEach(({ im, tx, ty }) => { if (im) g.drawImage(im, MX + (tx * 256 - ox) * sc, MY + (ty * 256 - oy) * sc, 256 * sc + 1, 256 * sc + 1); });
   }
@@ -1007,7 +1008,7 @@ async function renderCard(rec, noTiles) {
   g.fillStyle = '#16202E'; g.strokeStyle = '#fff'; g.lineWidth = 6; g.beginPath(); g.arc(sp[0], sp[1], 20, 0, Math.PI * 2); g.fill(); g.stroke();
   g.fillStyle = '#fff'; g.font = font(800, 20); g.textAlign = 'center'; g.fillText('P', sp[0], sp[1] + 7); g.textAlign = 'left';
   g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(MX + MW - 270, MY + MH - 30, 270, 30);
-  g.fillStyle = '#6B7280'; g.font = font(500, 16); g.textAlign = 'right'; g.fillText('© OpenStreetMap © CARTO', MX + MW - 12, MY + MH - 10); g.textAlign = 'left';
+  g.fillStyle = '#6B7280'; g.font = font(500, 16); g.textAlign = 'right'; g.fillText('© OpenStreetMap contributors', MX + MW - 12, MY + MH - 10); g.textAlign = 'left';
   g.restore();
   // stats
   const steps = rec.real || rec.steps;
